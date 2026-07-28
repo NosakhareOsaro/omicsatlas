@@ -48,5 +48,5 @@ paper/_output/
 .vscode/
 .idea/
 
-# Claude Code local settings (not part of project config)
-.claude/settings.local.json
+# Claude Code local session state (not part of project config)
+.claude/
