@@ -7,10 +7,11 @@ All raw data is fetched via scripted, version-pinned fetchers (`scripts/fetch_da
 | Modality | Description | Accession | Downloaded | SHA256 | License |
 |---|---|---|---|---|---|
 | scRNA-seq | Wu et al. 2021 (Nat Genet) human breast cancer atlas, processed scRNA-seq count matrix and published cell-type metadata (26 primary tumours: 11 ER+, 5 HER2+, 10 TNBC) | GSE176078 | 2026-07-28 | `c64894a9d50e…` | Public GEO deposit, no access restriction on the processed matrix (raw FASTQs are EGA-controlled-access under EGAS00001005173 and are not used by this project). See the publication for reuse/citation expectations. |
-| Bulk RNA-seq | TBD | TBD | - | - | - |
+| Bulk RNA-seq (GSE176078-matched) | Wu et al. 2021 (Nat Genet) bulk RNA-seq (RSEM-style estimated counts) from the same patient cohort as the scRNA-seq data — 24 of the 26 scRNA-seq patients have a matched bulk sample (verified by exact orig.ident overlap; see ADR-0003). Primary dataset for the Phase 5 CrossOmicsConcordance benchmark. Downloaded file is a gzipped tar containing one .txt file — extract with `make bulk-data-extract` before use. | GSE176078 | 2026-07-28 | `5138012877bd…` | Public GEO deposit, no access restriction (same series as the scRNA-seq data; see its license_note for the EGA-controlled-access raw FASTQ caveat, which doesn't apply to this processed count matrix). |
+| Bulk RNA-seq (TCGA-BRCA) | TCGA-BRCA STAR-Counts gene-level RNA-seq counts (GDC), reproducible 30-tumour + 15-normal subset sorted by file_id (open-access; full cohort is 1,098 samples, HPC-scale — see ADR-0003). Secondary, generalisability-only dataset, not fed into the Phase 5 concordance benchmark. | TCGA-BRCA | 2026-07-28 | `62de688a781e…` | Open-access GDC data (gene-level quantification only; this project does not use any dbGaP-controlled-access TCGA files). |
 | Spatial (Visium) | TBD | TBD | - | - | - |
 | ATAC-seq | TBD | TBD | - | - | - |
 
 ## Notes
 
-- GSE176078 (scRNA-seq) also includes a bulk RNA-seq raw-count matrix from the same 26-patient cohort (`GSE176078_Wu_etal_2021_bulkRNAseq_raw_counts.txt.gz`). This would be a more tightly matched concordance comparator than TCGA-BRCA's unrelated cohort — flagged here as an option for Phase 2 review, not yet used.
+- The GSE176078-matched bulk dataset was chosen as the **primary** bulk RNA-seq input for the Phase 5 CrossOmicsConcordance benchmark over TCGA-BRCA, because 24 of its 26 scRNA-seq patients are exact-ID-matched to the same patients as the Phase 1 scRNA-seq signature — see `adr/ADR-0003-bulk-data-choice.md` for the full comparison. TCGA-BRCA is fetched too, as a secondary, generalisability-only analysis.

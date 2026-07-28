@@ -1,4 +1,4 @@
-.PHONY: setup lint test run clean scrna-signature scrna-signature-fixture
+.PHONY: setup lint test run clean scrna-signature scrna-signature-fixture bulk-data-fetch bulk-data-extract
 
 setup:
 	mamba env create -f environment/env.yml
@@ -25,6 +25,13 @@ scrna-signature:
 
 scrna-signature-fixture:
 	python -m omicsatlas.scrna.pipeline --fixture
+
+bulk-data-fetch:
+	python scripts/fetch_data.py gse176078_bulk_matched
+	python scripts/fetch_data.py tcga_brca_subset
+
+bulk-data-extract:
+	cd data/raw/bulk/gse176078_matched && tar -xzf GSE176078_Wu_etal_2021_bulkRNAseq_raw_counts.txt.gz
 
 clean:
 	rm -rf .pytest_cache .mypy_cache .ruff_cache htmlcov .coverage
