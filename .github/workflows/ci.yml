@@ -49,7 +49,14 @@ jobs:
       run:
         shell: bash -el {0}
     steps:
+      # persist-credentials: false — actions/checkout's default persisted
+      # GITHUB_TOKEN credential header gets picked up by remotes::install_github()'s
+      # HTTP client below and sent to api.github.com, where it's the wrong kind of
+      # token and gets rejected (401 Bad credentials) — validated empirically while
+      # wiring up this job. Not needed anyway since this job never pushes.
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - uses: mamba-org/setup-micromamba@v2
         with:
@@ -75,7 +82,10 @@ jobs:
       run:
         shell: bash -el {0}
     steps:
+      # See r-cmd-check's checkout step above for why persist-credentials is off.
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - uses: mamba-org/setup-micromamba@v2
         with:
