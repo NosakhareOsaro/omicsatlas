@@ -17,5 +17,10 @@ A \code{SingleCellExperiment}.
 }
 \description{
 Thin wrapper around \code{zellkonverter::readH5AD()}, isolated in its own function so
-it's the one place that knows how the Phase 1 \code{.h5ad} artifact gets into R.
+it's the one place that knows how the Phase 1 \code{.h5ad} artifact gets into R. Uses
+\code{reader = "R"} (zellkonverter's native HDF5 reader) rather than the default
+Python/basilisk-backed reader: \code{.h5ad} is a well-defined on-disk format readable
+without going through Python at all, and the default reader tried to bootstrap an
+entirely new, from-source-compiled Python via basilisk/reticulate the first time
+this was run for real - unnecessary and far slower than just reading the file.
 }

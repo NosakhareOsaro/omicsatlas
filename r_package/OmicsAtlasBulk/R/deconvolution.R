@@ -25,9 +25,16 @@
 #' @param cell_type_col `colData` column in `reference_sce` giving cell-type labels.
 #'   Default `"singler_label"` (the Phase 1 signature's SingleR annotation column —
 #'   see `DATA_SCHEMA.md`).
-#' @param cell_state_col `colData` column in `reference_sce` giving cell-state labels
-#'   (a finer-grained tier within each type, as BayesPrism recommends). Default
-#'   `"leiden"` (the Phase 1 signature's cluster column).
+#' @param cell_state_col `colData` column in `reference_sce` giving raw cell-state
+#'   labels (a finer-grained tier within each type, as BayesPrism recommends).
+#'   Default `"leiden"` (the Phase 1 signature's cluster column). The actual state
+#'   label passed to BayesPrism is `paste(cell_type, raw_state)`, not this column's
+#'   raw values directly - BayesPrism requires states to nest within types, and
+#'   `leiden` clusters (computed independently of `singler_label`) don't nest on
+#'   their own (verified on the real signature: a single Leiden cluster spans
+#'   nearly every SingleR type). Combining the two guarantees valid nesting by
+#'   construction, for any `cell_type_col`/`cell_state_col` pair, without reshaping
+#'   the underlying artifact.
 #' @param n_cores Passed to `BayesPrism::run.prism()`. Default `1`.
 #' @param ... Additional arguments passed to `BayesPrism::new.prism()` (e.g.
 #'   `outlier.cut`, `outlier.fraction`).
@@ -61,7 +68,16 @@ run_bayesprism_deconvolution <- function(bulk_se,
                                           ...) {
   ref_counts <- t(as.matrix(SummarizedExperiment::assay(reference_sce)))
   cell_type_labels <- as.character(SummarizedExperiment::colData(reference_sce)[[cell_type_col]])
-  cell_state_labels <- as.character(SummarizedExperiment::colData(reference_sce)[[cell_state_col]])
+  cell_state_raw <- as.character(SummarizedExperiment::colData(reference_sce)[[cell_state_col]])
+  # BayesPrism requires cell.state.labels to nest within cell.type.labels (each
+  # state belongs to exactly one type) - errors with "one or more cell states
+  # belong to multiple cell types" otherwise. The documented Phase 1 schema's
+  # `leiden` clusters are computed independently of `singler_label` cell types and
+  # don't nest - verified empirically on the real signature artifact (a single
+  # Leiden cluster spans nearly every SingleR type). Combining type and raw state
+  # into one label nests by construction while still carrying leiden's within-type
+  # heterogeneity signal, without reshaping the underlying artifact at all.
+  cell_state_labels <- paste(cell_type_labels, cell_state_raw, sep = "_")
 
   bulk_counts <- t(round(as.matrix(SummarizedExperiment::assay(bulk_se, assay_name))))
 
@@ -81,7 +97,12 @@ run_bayesprism_deconvolution <- function(bulk_se,
 #' Load the OmicsAtlas scRNA-seq signature artifact
 #'
 #' Thin wrapper around `zellkonverter::readH5AD()`, isolated in its own function so
-#' it's the one place that knows how the Phase 1 `.h5ad` artifact gets into R.
+#' it's the one place that knows how the Phase 1 `.h5ad` artifact gets into R. Uses
+#' `reader = "R"` (zellkonverter's native HDF5 reader) rather than the default
+#' Python/basilisk-backed reader: `.h5ad` is a well-defined on-disk format readable
+#' without going through Python at all, and the default reader tried to bootstrap an
+#' entirely new, from-source-compiled Python via basilisk/reticulate the first time
+#' this was run for real - unnecessary and far slower than just reading the file.
 #'
 #' @param signature_h5ad_path Path to the Phase 1 scRNA-seq signature `.h5ad`
 #'   artifact (see `src/omicsatlas/scrna/artifact.py`'s `signature_path()` in the
@@ -91,5 +112,5 @@ run_bayesprism_deconvolution <- function(bulk_se,
 #' @return A `SingleCellExperiment`.
 #' @export
 load_scrna_signature <- function(signature_h5ad_path) {
-  zellkonverter::readH5AD(signature_h5ad_path)
+  zellkonverter::readH5AD(signature_h5ad_path, reader = "R")
 }

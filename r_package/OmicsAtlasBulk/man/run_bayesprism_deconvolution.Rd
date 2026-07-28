@@ -29,9 +29,16 @@ wants raw counts).}
 Default \code{"singler_label"} (the Phase 1 signature's SingleR annotation column —
 see \code{DATA_SCHEMA.md}).}
 
-\item{cell_state_col}{\code{colData} column in \code{reference_sce} giving cell-state labels
-(a finer-grained tier within each type, as BayesPrism recommends). Default
-\code{"leiden"} (the Phase 1 signature's cluster column).}
+\item{cell_state_col}{\code{colData} column in \code{reference_sce} giving raw cell-state
+labels (a finer-grained tier within each type, as BayesPrism recommends).
+Default \code{"leiden"} (the Phase 1 signature's cluster column). The actual state
+label passed to BayesPrism is \code{paste(cell_type, raw_state)}, not this column's
+raw values directly - BayesPrism requires states to nest within types, and
+\code{leiden} clusters (computed independently of \code{singler_label}) don't nest on
+their own (verified on the real signature: a single Leiden cluster spans
+nearly every SingleR type). Combining the two guarantees valid nesting by
+construction, for any \code{cell_type_col}/\code{cell_state_col} pair, without reshaping
+the underlying artifact.}
 
 \item{n_cores}{Passed to \code{BayesPrism::run.prism()}. Default \code{1}.}
 
