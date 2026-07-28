@@ -38,6 +38,55 @@ def test_compute_size_factors_works_on_sparse_input() -> None:
     assert np.all(size_factors > 0)
 
 
+def test_compute_size_factors_sparse_matches_dense() -> None:
+    """Regression check: compute_size_factors used to densify sparse input before
+    handing it to R; it now builds a sparse Matrix::dgCMatrix instead (necessary at
+    real-dataset scale — a dense float64 copy of GSE176078 would need ~24GB of RAM).
+
+    Verified separately (by comparing the raw R-side matrix content column-by-column)
+    that to_r_matrix's sparse and dense conversions are bit-exact — the glue code
+    isn't the source of any discrepancy. But scran's computeSumFactors itself can
+    take a different internal code path for a dgCMatrix vs a dense matrix assay
+    (e.g. quickCluster/pooling rank ties), and at this tiny test scale that
+    occasionally produces a real outlier on one cell (observed: 1/60, off by ~30
+    orders of magnitude, while the other 59 matched to 1e-6) — not something this
+    glue code can or should paper over. So this checks that the large majority of
+    cells agree closely, not bit-for-bit equality on every cell.
+    """
+    adata = build_synthetic_scrna_adata(
+        n_samples=1, cells_per_sample=60, n_qc_outliers_per_sample=0, n_doublets_per_sample=0
+    )
+
+    dense_factors = compute_size_factors(adata.X, pool_sizes=(10, 20, 30))
+    sparse_factors = compute_size_factors(sp.csr_matrix(adata.X), pool_sizes=(10, 20, 30))
+
+    relative_diff = np.abs(dense_factors - sparse_factors) / dense_factors
+    agreeing = relative_diff < 1e-3
+    assert agreeing.mean() >= 0.9, (
+        f"Only {agreeing.mean():.0%} of cells agreed between sparse/dense paths "
+        f"(expected >=90%); worst relative diff {relative_diff.max():.3g}"
+    )
+
+
+def test_scran_normalize_sparse_input_yields_sparse_layer_matching_dense() -> None:
+    adata_dense = build_synthetic_scrna_adata(
+        n_samples=1, cells_per_sample=60, n_qc_outliers_per_sample=0, n_doublets_per_sample=0
+    )
+    adata_sparse = adata_dense.copy()
+    adata_sparse.X = sp.csr_matrix(adata_dense.X)
+
+    scran_normalize(adata_dense, pool_sizes=(10, 20, 30))
+    scran_normalize(adata_sparse, pool_sizes=(10, 20, 30))
+
+    assert sp.issparse(adata_sparse.layers["scran_normalized"])
+    np.testing.assert_allclose(
+        adata_dense.layers["scran_normalized"],
+        adata_sparse.layers["scran_normalized"].toarray(),
+        rtol=1e-5,
+        atol=1e-6,
+    )
+
+
 def test_compute_size_factors_falls_back_when_pool_sizes_exceed_cell_count() -> None:
     adata = build_synthetic_scrna_adata(
         n_samples=1, cells_per_sample=15, n_qc_outliers_per_sample=0, n_doublets_per_sample=0

@@ -17,6 +17,8 @@ from typing import Any
 import anndata as ad
 import numpy as np
 
+from omicsatlas.scrna.normalize import CountsMatrix
+
 DEFAULT_LABEL_COLUMN = "label.main"
 
 
@@ -63,7 +65,7 @@ def build_summarized_experiment_reference(
 
 
 def build_placeholder_reference(
-    log_norm: np.ndarray,
+    log_norm: CountsMatrix,
     gene_names: list[str],
     *,
     n_groups: int = 5,
@@ -83,45 +85,51 @@ def build_placeholder_reference(
     from sklearn.cluster import KMeans
 
     n_groups = min(n_groups, log_norm.shape[0])
+    # KMeans accepts sparse input directly; no need to densify for clustering.
     kmeans = KMeans(n_clusters=n_groups, random_state=seed, n_init=10).fit(log_norm)
 
     profiles = []
     labels = [f"placeholder_type_{i}" for i in range(n_groups)]
     for i in range(n_groups):
         mask = kmeans.labels_ == i
-        profiles.append(log_norm[mask].mean(axis=0))
+        group = log_norm[mask]
+        # scipy sparse .mean(axis=0) returns a np.matrix; ravel to a flat 1D array
+        # to match the dense-input np.ndarray.mean(axis=0) shape.
+        profiles.append(np.asarray(group.mean(axis=0)).ravel())
     matrix_gene_by_group = np.asarray(profiles).T
 
     return build_summarized_experiment_reference(matrix_gene_by_group, gene_names, labels)
 
 
 def run_singler(
-    query_log_norm: np.ndarray,
+    query_log_norm: CountsMatrix,
     query_genes: list[str],
     reference: Any,
     *,
     label_column: str = DEFAULT_LABEL_COLUMN,
 ) -> np.ndarray:
     """Run SingleR, returning one predicted label per query cell (row of
-    ``query_log_norm``, a cells-by-genes matrix). ``reference`` is an R
-    SummarizedExperiment with a ``logcounts`` assay and ``colData[[label_column]]``."""
+    ``query_log_norm``, a cells-by-genes matrix — dense or sparse). ``reference`` is
+    an R SummarizedExperiment with a ``logcounts`` assay and
+    ``colData[[label_column]]``."""
     import rpy2.robjects as robjects
-    from rpy2.robjects import numpy2ri
     from rpy2.robjects.packages import importr
+
+    from omicsatlas.scrna.normalize import to_r_matrix
 
     singler = importr("SingleR")
     summarized_experiment = importr("SummarizedExperiment")
 
-    # Only the numpy -> R conversion itself needs the numpy2ri context. Calling R
-    # functions *inside* that context also converts their return values back to
+    # to_r_matrix keeps sparse input sparse (Matrix::dgCMatrix) rather than
+    # densifying — at real-dataset scale a dense float64 copy of the full gene set
+    # would need tens of GB of RAM. See normalize.py.
+    r_query_raw = to_r_matrix(query_log_norm.T)
+    # R calls made *inside* the numpy2ri conversion context (used internally by
+    # to_r_matrix for the dense path) also convert their return values back to
     # numpy, silently stripping R attributes like rownames (found empirically: a
     # `rownames<-` call made inside the context returned a plain numpy.ndarray, and
     # SingleR then failed with "'test' must have row names" despite the assignment
-    # having "worked"). So every R-side call below runs outside it.
-    query_gene_by_cell = np.asarray(query_log_norm.T, dtype=np.float64)
-    with (robjects.default_converter + numpy2ri.converter).context():
-        r_query_raw = robjects.conversion.get_conversion().py2rpy(query_gene_by_cell)
-
+    # having "worked"). So every R-side call below runs outside any such context.
     r_query = robjects.r["rownames<-"](r_query_raw, robjects.StrVector(query_genes))
 
     # colData() returns an S4 DFrame, not a plain rpy2 ListVector, so .rx2() isn't

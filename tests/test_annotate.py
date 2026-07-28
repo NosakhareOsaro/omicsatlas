@@ -9,6 +9,9 @@ label per cell, not just that the code path runs. See ADR-0002.
 
 from __future__ import annotations
 
+import numpy as np
+import scipy.sparse as sp
+
 from omicsatlas.scrna.annotate import annotate_with_singler, run_singler
 from omicsatlas.scrna.normalize import scran_normalize
 from tests.fixtures.synthetic_r_reference import build_synthetic_singler_reference
@@ -58,6 +61,21 @@ def test_run_singler_recovers_the_true_blob_label_for_most_cells() -> None:
     # synthetic reference won't be perfect, but it should be well above the ~33%
     # chance rate for 3 blobs.
     assert accuracy > 0.7
+
+
+def test_run_singler_sparse_query_matches_dense() -> None:
+    """Regression check: run_singler used to densify the query with a plain
+    np.asarray call, which silently mishandles scipy sparse input (it doesn't
+    densify — it wraps it in a 0-d object array). Fixed to route through
+    normalize.to_r_matrix, which stays sparse. Both must give the same labels."""
+    adata, reference, _ = _fixture_with_reference()
+    dense_layer = adata.layers["scran_normalized"]
+    sparse_layer = sp.csr_matrix(dense_layer)
+
+    dense_labels = run_singler(dense_layer, list(adata.var_names), reference)
+    sparse_labels = run_singler(sparse_layer, list(adata.var_names), reference)
+
+    np.testing.assert_array_equal(dense_labels, sparse_labels)
 
 
 def test_annotate_with_singler_writes_expected_obs_column() -> None:
