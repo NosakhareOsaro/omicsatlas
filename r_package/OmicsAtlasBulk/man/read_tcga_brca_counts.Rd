@@ -6,7 +6,7 @@
 \usage{
 read_tcga_brca_counts(
   manifest_path,
-  repo_root = dirname(dirname(manifest_path))
+  repo_root = dirname(dirname(dirname(manifest_path)))
 )
 }
 \arguments{
@@ -14,7 +14,7 @@ read_tcga_brca_counts(
 \code{data/.provenance/tcga_brca_subset.json}.}
 
 \item{repo_root}{Root directory the manifest's \code{dest} paths (e.g.
-\code{data/raw/bulk/tcga_brca/...}) are relative to. Default: two directories up
+\code{data/raw/bulk/tcga_brca/...}) are relative to. Default: three directories up
 from \code{manifest_path} (right for the manifest's real
 \code{data/.provenance/tcga_brca_subset.json} location - the repository root -
 but overridable, e.g. for tests using a fixture manifest elsewhere).}
