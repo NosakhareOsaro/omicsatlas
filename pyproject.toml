@@ -1,0 +1,64 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "omicsatlas"
+version = "0.1.0.dev0"
+description = "Multi-modal explorer unifying scRNA-seq, spatial transcriptomics, ATAC-seq, and bulk RNA-seq for human breast cancer."
+readme = "README.md"
+requires-python = ">=3.11,<3.12"
+license = { text = "MIT" }
+authors = [{ name = "Nosakhare Odionfo Osaro", email = "osaronosakhare@gmail.com" }]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+]
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+    "ruff>=0.6",
+    "black>=24.0",
+    "mypy>=1.10",
+    "pre-commit>=3.7",
+]
+
+[project.urls]
+Homepage = "https://github.com/NosakhareOsaro/omicsatlas"
+Issues = "https://github.com/NosakhareOsaro/omicsatlas/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/omicsatlas"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "NPY"]
+
+[tool.black]
+line-length = 100
+target-version = ["py311"]
+
+[tool.mypy]
+python_version = "3.11"
+files = ["src/omicsatlas"]
+ignore_missing_imports = true
+disallow_untyped_defs = true
+warn_unused_ignores = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--cov=omicsatlas --cov-report=term-missing --cov-fail-under=85"
+
+[tool.coverage.run]
+source = ["src/omicsatlas"]
+omit = ["src/omicsatlas/concordance/*"]
