@@ -20,6 +20,13 @@ jobs:
           environment-file: environment/env.yml
           environment-name: omicsatlas
           cache-environment: true
+          # Pinned below the sharded-repodata rollout: that experimental libmamba
+          # fetch path was silently dropping/mis-parsing some bioconda packages
+          # (r-matrixstats, python-annoy) needed transitively by
+          # bioconductor-celldex/scran/singler and scrublet, causing solves that
+          # succeeded locally to fail in CI — validated empirically while wiring up
+          # this workflow.
+          micromamba-version: "1.5.10-0"
 
       - name: Install package (editable, dev extras)
         run: pip install -e ".[dev]"
