@@ -25,5 +25,12 @@ repos:
     rev: v1.11.2
     hooks:
       - id: mypy
-        additional_dependencies: []
+        # Without these, pre-commit's isolated mypy env sees scipy/numpy/pandas as
+        # untyped Any, which silently disagrees with the real project mypy run (e.g.
+        # flagging a scipy.sparse type-narrowing ignore as "unused" here while the
+        # project env, with real stubs, requires it) — found empirically.
+        additional_dependencies:
+          - numpy==2.4.6
+          - scipy==1.17.1
+          - pandas-stubs
         files: ^src/omicsatlas/
