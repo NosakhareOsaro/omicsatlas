@@ -2,7 +2,7 @@
 
 Tracks progress against the phase plan. Updated at the start/end of each phase.
 
-- [ ] **Phase 0 — Foundations**: repo scaffold, ADR-0001 (license + architecture),
+- [x] **Phase 0 — Foundations**: repo scaffold, ADR-0001 (license + architecture),
       pyproject.toml, pre-commit hooks, conda env, Dockerfile, CI skeleton,
       CONTRIBUTING, issue/PR templates.
 - [ ] **Phase 1 — scRNA-seq pipeline**: QC, Scrublet, scran normalisation, HVG/PCA/UMAP,
@@ -22,4 +22,8 @@ Tracks progress against the phase plan. Updated at the start/end of each phase.
 
 ## Current status
 
-Phase 0 in progress.
+Phase 0 complete (2026-07-28): repo scaffolded, ADR-0001 accepted (MIT license,
+monorepo architecture, Python 3.11), packaging/lint/CI/Docker all verified locally
+and green on GitHub Actions at
+[NosakhareOsaro/omicsatlas](https://github.com/NosakhareOsaro/omicsatlas). Pausing
+for review before starting Phase 1 (scRNA-seq pipeline).
