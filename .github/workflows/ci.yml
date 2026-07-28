@@ -42,3 +42,58 @@ jobs:
 
       - name: Pytest (coverage gated in pyproject.toml)
         run: pytest
+
+  r-cmd-check:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash -el {0}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: mamba-org/setup-micromamba@v2
+        with:
+          environment-file: environment/env.yml
+          environment-name: omicsatlas
+          cache-environment: true
+          # See lint-and-test's comment above on this same pin.
+          micromamba-version: "1.5.10-0"
+
+      - name: Install BayesPrism (GitHub-only, pinned commit — see ADR-0004)
+        run: |
+          Rscript -e 'remotes::install_github("Danko-Lab/BayesPrism/BayesPrism@19052052a6f30833b27e2148294459b0ba2f923e")'
+
+      - name: R CMD check (0 errors/warnings/notes required)
+        working-directory: r_package/OmicsAtlasBulk
+        run: |
+          Rscript -e 'rcmdcheck::rcmdcheck(args = c("--no-manual"), error_on = "note")'
+
+  pkgdown:
+    runs-on: ubuntu-latest
+    needs: r-cmd-check
+    defaults:
+      run:
+        shell: bash -el {0}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: mamba-org/setup-micromamba@v2
+        with:
+          environment-file: environment/env.yml
+          environment-name: omicsatlas
+          cache-environment: true
+          micromamba-version: "1.5.10-0"
+
+      - name: Install BayesPrism (GitHub-only, pinned commit — see ADR-0004)
+        run: |
+          Rscript -e 'remotes::install_github("Danko-Lab/BayesPrism/BayesPrism@19052052a6f30833b27e2148294459b0ba2f923e")'
+
+      - name: Install OmicsAtlasBulk
+        working-directory: r_package/OmicsAtlasBulk
+        run: Rscript -e 'devtools::install(dependencies = FALSE, upgrade = "never")'
+
+      # Validates the pkgdown site builds cleanly. Deployment happens via the
+      # unified docs site (Phase 7) — see docs/README.md.
+      - name: Build pkgdown site
+        working-directory: r_package/OmicsAtlasBulk
+        run: Rscript -e 'pkgdown::build_site()'
