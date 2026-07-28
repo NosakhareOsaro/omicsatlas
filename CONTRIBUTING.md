@@ -9,7 +9,7 @@ to propose a change.
 ```
 mamba env create -f environment/env.yml   # Apple Silicon: prefix with CONDA_SUBDIR=osx-64
 conda activate omicsatlas
-pip install -e ".[dev]" rpy2==3.6.7 pertpy==1.0.3 scikit-learn==1.9.0
+pip install -e ".[dev]" rpy2==3.6.7 pertpy==1.0.3 scikit-learn==1.9.0 pydeseq2==0.5.4
 pre-commit install
 ```
 
