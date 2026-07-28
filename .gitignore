@@ -1,0 +1,52 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# R
+.Rproj.user/
+.Rhistory
+.RData
+.Ruserdata
+r_package/*.Rcheck/
+renv/library/
+renv/staging/
+
+# Data (raw/large data never committed; see data/README.md for provenance)
+data/raw/
+data/interim/
+data/processed/
+*.h5ad
+*.h5
+*.loom
+*.bam
+*.bai
+*.fastq.gz
+*.fq.gz
+
+# Environments / secrets
+.env
+*.env.local
+
+# Docs build
+docs/_site/
+docs/.quarto/
+paper/_output/
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
+
+# Claude Code local settings (not part of project config)
+.claude/settings.local.json
