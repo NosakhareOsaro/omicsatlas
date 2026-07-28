@@ -13,6 +13,8 @@ import anndata as ad
 import numpy as np
 import scrublet as scr
 
+from omicsatlas.scrna.normalize import CountsMatrix
+
 DEFAULT_SAMPLE_COL = "orig.ident"
 DEFAULT_FALLBACK_THRESHOLD = 0.25
 DOUBLET_RATE_PER_1000_CELLS = 0.008
@@ -28,7 +30,7 @@ def expected_doublet_rate(n_cells: int) -> float:
 
 
 def _run_scrublet_one_sample(
-    counts_matrix: np.ndarray,
+    counts_matrix: CountsMatrix,
     *,
     random_state: int,
     fallback_threshold: float,
@@ -70,7 +72,11 @@ def run_scrublet_per_sample(
 
     for _, idx in adata.obs.groupby(sample_col, observed=True).groups.items():
         positions = adata.obs.index.get_indexer(idx)
-        counts_matrix = np.asarray(adata.X[positions])
+        # Scrublet accepts scipy sparse input directly — slicing keeps adata.X's
+        # dtype (dense or sparse) as-is; wrapping in np.asarray() here used to
+        # silently mishandle sparse input (wraps it in a 0-d object array rather
+        # than densifying), found running against the real, sparse GSE176078 data.
+        counts_matrix = adata.X[positions]
         scores, calls, fallback_used = _run_scrublet_one_sample(
             counts_matrix,
             random_state=random_state,

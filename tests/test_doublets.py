@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
+import scipy.sparse as sp
 
 from omicsatlas.scrna.doublets import expected_doublet_rate, run_scrublet_per_sample
 from tests.fixtures.synthetic_scrna import build_synthetic_scrna_adata
@@ -56,6 +57,23 @@ def test_run_scrublet_per_sample_preserves_cell_order_and_count() -> None:
 
     assert adata.n_obs == original_n_obs
     assert list(adata.obs.index) == list(original_index)
+
+
+def test_run_scrublet_per_sample_works_on_sparse_input() -> None:
+    """Regression check: a bare np.asarray() on adata.X[positions] used to silently
+    mishandle scipy sparse input (wraps it in a 0-d object array rather than
+    densifying, so counts_matrix.shape[0] raised IndexError) — found running against
+    the real, sparse GSE176078 data. Scrublet accepts sparse input natively; the fix
+    was to stop forcing it through np.asarray at all."""
+    adata = build_synthetic_scrna_adata(
+        n_samples=2, cells_per_sample=40, n_doublets_per_sample=3, n_qc_outliers_per_sample=0
+    )
+    adata.X = sp.csr_matrix(adata.X)
+
+    run_scrublet_per_sample(adata)
+
+    assert adata.obs["doublet_score"].notna().all()
+    assert adata.obs["predicted_doublet"].dtype == bool
 
 
 def test_run_scrublet_detects_injected_doublets_at_sufficient_scale() -> None:

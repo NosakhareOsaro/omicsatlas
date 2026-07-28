@@ -92,10 +92,20 @@ def run_pipeline(
     *,
     version: str | None = None,
     resolutions: tuple[float, ...] = (0.2, 0.4, 0.6, 0.8, 1.0, 1.2, 1.4),
+    patient_subset: list[str] | None = None,
 ) -> ad.AnnData:
     """Run the full pipeline against the real, extracted GSE176078 data and write the
-    versioned signature artifact. Returns the resulting AnnData."""
+    versioned signature artifact. Returns the resulting AnnData.
+
+    ``patient_subset``, if given, restricts to those ``orig.ident`` values before QC
+    — the full 26-patient/~100k-cell cohort is HPC-scale (see the project's
+    reproducibility policy: full runs need HPC/cloud, documented as such); this
+    supports validating the pipeline end-to-end on a smaller, still-real,
+    still-multi-patient/multi-subtype slice on a single machine.
+    """
     adata = load_gse176078(raw_dir)
+    if patient_subset is not None:
+        adata = adata[adata.obs["orig.ident"].isin(patient_subset)].copy()
     adata = _assemble_signature(
         adata,
         resolutions=resolutions,
