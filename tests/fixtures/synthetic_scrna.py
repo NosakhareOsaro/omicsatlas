@@ -93,13 +93,22 @@ def build_synthetic_scrna_adata(
         blob_weights /= blob_weights.sum()
 
         normal_cells = []
+        normal_blobs = []
         for _ in range(cells_per_sample):
-            blob = rng.choice(n_blobs, p=blob_weights)
+            blob = int(rng.choice(n_blobs, p=blob_weights))
             log_means = np.full(n_genes_total, baseline_log_mean)
             log_means[blob_signal_genes[blob]] = blob_log_means[blob, blob_signal_genes[blob]]
             counts = rng.poisson(np.exp(log_means)).astype(np.float32)
             normal_cells.append(counts)
-            obs_records.append({"orig.ident": sample_id, "subtype": subtype, "_qc_case": "normal"})
+            normal_blobs.append(blob)
+            obs_records.append(
+                {
+                    "orig.ident": sample_id,
+                    "subtype": subtype,
+                    "_qc_case": "normal",
+                    "_true_blob": blob,
+                }
+            )
         rows.extend(normal_cells)
 
         for i in range(n_qc_outliers_per_sample):
@@ -115,13 +124,31 @@ def build_synthetic_scrna_adata(
                 counts[: len(MT_GENE_NAMES)] = rng.poisson(200, size=len(MT_GENE_NAMES))
                 qc_case = "high_mito_outlier"
             rows.append(counts.astype(np.float32))
-            obs_records.append({"orig.ident": sample_id, "subtype": subtype, "_qc_case": qc_case})
+            # -1: an outlier's expression is overwritten, so it has no meaningful blob
+            # origin — not the blob normal_cells[0] happened to come from.
+            obs_records.append(
+                {
+                    "orig.ident": sample_id,
+                    "subtype": subtype,
+                    "_qc_case": qc_case,
+                    "_true_blob": -1,
+                }
+            )
 
         for _ in range(n_doublets_per_sample):
             a, b = rng.choice(len(normal_cells), size=2, replace=False)
             doublet_counts = normal_cells[a] + normal_cells[b]
             rows.append(doublet_counts.astype(np.float32))
-            obs_records.append({"orig.ident": sample_id, "subtype": subtype, "_qc_case": "doublet"})
+            # -1: a doublet is a mixture of two (possibly different) blobs, no single
+            # true origin.
+            obs_records.append(
+                {
+                    "orig.ident": sample_id,
+                    "subtype": subtype,
+                    "_qc_case": "doublet",
+                    "_true_blob": -1,
+                }
+            )
 
     x = np.vstack(rows)
     obs = pd.DataFrame(obs_records)
@@ -131,6 +158,12 @@ def build_synthetic_scrna_adata(
     var = pd.DataFrame(index=pd.Index(var_names, name="gene_symbol"))
 
     adata = ad.AnnData(X=x, obs=obs, var=var)
+    # Generative blob parameters, attached for tests that need to build a matching
+    # synthetic reference (e.g. SingleR annotation recovery) — not read by production
+    # code.
+    adata.uns["_blob_signal_genes"] = blob_signal_genes
+    adata.uns["_blob_log_means"] = blob_log_means
+    adata.uns["_baseline_log_mean"] = baseline_log_mean
 
     if include_velocity_layers:
         # Synthetic spliced/unspliced layers so the scVelo module has something to run
