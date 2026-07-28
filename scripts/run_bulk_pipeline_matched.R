@@ -36,7 +36,7 @@ if (!file.exists(counts_path)) {
 resolve_signature_path <- function() {
   out <- system2(
     "python",
-    c("-c", "from omicsatlas.scrna.artifact import signature_path; print(signature_path())"),
+    c("-c", shQuote("from omicsatlas.scrna.artifact import signature_path; print(signature_path())")),
     stdout = TRUE
   )
   trimws(out[length(out)])
