@@ -19,18 +19,20 @@ RoxygenNote: 8.0.0
 Suggests:
     knitr,
     quarto,
+    SingleCellExperiment,
     testthat (>= 3.0.0),
     withr
 Config/testthat/edition: 3
+Remotes:
+    Danko-Lab/BayesPrism/BayesPrism@19052052a6f30833b27e2148294459b0ba2f923e
 Imports:
+    BayesPrism,
     clusterProfiler,
     DESeq2,
     edgeR,
     ggplot2,
     ggVennDiagram,
-    limma,
     magrittr,
-    methods,
     org.Hs.eg.db,
     Rsubread,
     S4Vectors,
