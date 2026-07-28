@@ -36,6 +36,7 @@ data/processed/
 # ...except tiny bundled test fixtures, which are meant to be committed (standard R
 # package convention for @examples/testthat data — see ADR-0004).
 !r_package/**/inst/extdata/*.fastq.gz
+!r_package/**/inst/extdata/*.bam
 
 # Environments / secrets
 .env
