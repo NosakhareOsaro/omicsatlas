@@ -1,0 +1,11 @@
+# gene-model: GENCODE v36
+gene_id	gene_name	gene_type	unstranded	stranded_first	stranded_second	tpm_unstranded	fpkm_unstranded	fpkm_uq_unstranded
+N_unmapped			90	90	90
+N_multimapping			40	40	40
+N_noFeature			25	25	25
+N_ambiguous			15	15	15
+ENSG00000000001.1	GENEA	protein_coding	8	4	4	0.8	0.8	0.8
+ENSG00000000002.1	GENEB	protein_coding	15	7	8	1.5	1.5	1.5
+ENSG00000000003.1	GENEB	protein_coding	3	1	2	0.3	0.3	0.3
+ENSG00000000004.1	GENEC	lncRNA	1	1	0	0.1	0.1	0.1
+ENSG00000000005.1	GENED	protein_coding	90	45	45	9	9	9

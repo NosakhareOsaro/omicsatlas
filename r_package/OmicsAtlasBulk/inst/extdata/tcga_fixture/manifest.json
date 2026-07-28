@@ -1,0 +1,18 @@
+{
+  "files": [
+    {
+      "file_id": "fixture-file-1",
+      "file_name": "sample1.rna_seq.augmented_star_gene_counts.tsv",
+      "case_submitter_id": "TCGA-AA-0001",
+      "sample_type": "Primary Tumor",
+      "dest": "sample1.tsv"
+    },
+    {
+      "file_id": "fixture-file-2",
+      "file_name": "sample2.rna_seq.augmented_star_gene_counts.tsv",
+      "case_submitter_id": "TCGA-AA-0002",
+      "sample_type": "Solid Tissue Normal",
+      "dest": "sample2.tsv"
+    }
+  ]
+}

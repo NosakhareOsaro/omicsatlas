@@ -32,6 +32,7 @@ Imports:
     edgeR,
     ggplot2,
     ggVennDiagram,
+    jsonlite,
     magrittr,
     org.Hs.eg.db,
     Rsubread,

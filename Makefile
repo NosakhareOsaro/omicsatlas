@@ -1,4 +1,4 @@
-.PHONY: setup lint test run clean scrna-signature scrna-signature-fixture bulk-data-fetch bulk-data-extract
+.PHONY: setup lint test run clean scrna-signature scrna-signature-fixture bulk-data-fetch bulk-data-extract bulk-pipeline-matched bulk-pipeline-tcga
 
 setup:
 	mamba env create -f environment/env.yml
@@ -32,6 +32,18 @@ bulk-data-fetch:
 
 bulk-data-extract:
 	cd data/raw/bulk/gse176078_matched && tar -xzf GSE176078_Wu_etal_2021_bulkRNAseq_raw_counts.txt.gz
+
+# Primary: BayesPrism deconvolution of the matched-bulk cohort against the Phase 1
+# scRNA-seq signature (see ADR-0003, docs/bulk-pipeline.md). Requires
+# `make scrna-signature` and `make bulk-data-fetch`/`bulk-data-extract` first.
+bulk-pipeline-matched:
+	Rscript scripts/run_bulk_pipeline_matched.R
+
+# Secondary: full DESeq2/edgeR/enrichment pipeline on the TCGA-BRCA subset (see
+# ADR-0003, docs/bulk-pipeline.md). Requires `make bulk-data-fetch` first, and live
+# network access for KEGG enrichment.
+bulk-pipeline-tcga:
+	Rscript scripts/run_bulk_pipeline_tcga.R
 
 clean:
 	rm -rf .pytest_cache .mypy_cache .ruff_cache htmlcov .coverage

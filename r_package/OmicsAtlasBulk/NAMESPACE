@@ -2,7 +2,10 @@
 
 export("%>%")
 export(compare_de_methods)
+export(filter_low_count_genes)
 export(load_scrna_signature)
+export(read_matched_bulk_counts)
+export(read_tcga_brca_counts)
 export(render_bulk_report)
 export(run_bayesprism_deconvolution)
 export(run_deseq2)
