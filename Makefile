@@ -1,4 +1,4 @@
-.PHONY: setup lint test run clean
+.PHONY: setup lint test run clean scrna-signature scrna-signature-fixture
 
 setup:
 	mamba env create -f environment/env.yml
@@ -17,6 +17,14 @@ test:
 
 run:
 	@echo "No end-to-end entry point yet; added with the Nextflow master workflow in Phase 6."
+
+scrna-signature:
+	python scripts/fetch_data.py gse176078_scrna
+	cd data/raw/scrna/gse176078 && tar -xzf GSE176078_Wu_etal_2021_BRCA_scRNASeq.tar.gz
+	python -m omicsatlas.scrna.pipeline
+
+scrna-signature-fixture:
+	python -m omicsatlas.scrna.pipeline --fixture
 
 clean:
 	rm -rf .pytest_cache .mypy_cache .ruff_cache htmlcov .coverage

@@ -11,6 +11,8 @@ from __future__ import annotations
 
 import numpy as np
 
+from omicsatlas.scrna.annotate import build_summarized_experiment_reference
+
 
 def build_synthetic_singler_reference(
     *,
@@ -26,15 +28,11 @@ def build_synthetic_singler_reference(
     """Return an R SummarizedExperiment with a ``logcounts`` assay and
     ``colData$label.main``, built from ``profiles_per_blob`` synthetic pseudo-bulk
     profiles per blob (log1p of the same per-blob signal-gene means the AnnData
-    fixture uses, with a little noise so it isn't a degenerate single point).
+    fixture uses, with a little noise so it isn't a degenerate single point). Uses
+    ``annotate.build_summarized_experiment_reference`` for the actual R object
+    construction — the same low-level constructor the production placeholder
+    reference uses, so this test double stays representative.
     """
-    import rpy2.robjects as robjects
-    from rpy2.robjects import numpy2ri
-    from rpy2.robjects.packages import importr
-
-    summarized_experiment = importr("SummarizedExperiment")
-    s4vectors = importr("S4Vectors")
-
     labels = labels or [f"synthetic_type_{i}" for i in range(n_blobs)]
     rng = np.random.default_rng(seed)
 
@@ -51,18 +49,8 @@ def build_synthetic_singler_reference(
 
     ref_matrix_gene_by_sample = np.asarray(profiles).T  # genes x ref-samples
 
-    # See annotate.py: R calls made *inside* the numpy2ri context also get their
-    # return values silently converted back to numpy, stripping attributes like
-    # rownames. Only the initial py2rpy conversion needs the context.
-    with (robjects.default_converter + numpy2ri.converter).context():
-        r_matrix_raw = robjects.conversion.get_conversion().py2rpy(ref_matrix_gene_by_sample)
-
-    r_matrix = robjects.r["rownames<-"](r_matrix_raw, robjects.StrVector(gene_names))
-
-    col_data = s4vectors.DataFrame(**{"label.main": robjects.StrVector(profile_labels)})
-    reference = summarized_experiment.SummarizedExperiment(
-        assays=robjects.ListVector({"logcounts": r_matrix}),
-        colData=col_data,
+    reference = build_summarized_experiment_reference(
+        ref_matrix_gene_by_sample, gene_names, profile_labels
     )
 
     return reference, labels

@@ -31,6 +31,70 @@ def load_human_primary_cell_atlas() -> Any:
     return celldex.HumanPrimaryCellAtlasData()
 
 
+def build_summarized_experiment_reference(
+    matrix_gene_by_group: np.ndarray,
+    gene_names: list[str],
+    labels: list[str],
+    *,
+    label_column: str = DEFAULT_LABEL_COLUMN,
+) -> Any:
+    """Build an R SummarizedExperiment reference from a genes-by-reference-sample
+    matrix and one label per column. Shared low-level constructor used by both
+    ``build_placeholder_reference`` below and the test suite's synthetic reference
+    fixture (``tests/fixtures/synthetic_r_reference.py``)."""
+    import rpy2.robjects as robjects
+    from rpy2.robjects import numpy2ri
+    from rpy2.robjects.packages import importr
+
+    summarized_experiment = importr("SummarizedExperiment")
+    s4vectors = importr("S4Vectors")
+
+    # See run_singler's comment: R calls made *inside* the numpy2ri context also
+    # convert their return values back to numpy, stripping attributes like rownames.
+    with (robjects.default_converter + numpy2ri.converter).context():
+        r_matrix_raw = robjects.conversion.get_conversion().py2rpy(matrix_gene_by_group)
+    r_matrix = robjects.r["rownames<-"](r_matrix_raw, robjects.StrVector(gene_names))
+
+    col_data = s4vectors.DataFrame(**{label_column: robjects.StrVector(labels)})
+    return summarized_experiment.SummarizedExperiment(
+        assays=robjects.ListVector({"logcounts": r_matrix}),
+        colData=col_data,
+    )
+
+
+def build_placeholder_reference(
+    log_norm: np.ndarray,
+    gene_names: list[str],
+    *,
+    n_groups: int = 5,
+    seed: int = 0,
+) -> Any:
+    """Build a data-driven placeholder SingleR reference by k-means clustering the
+    query data itself into ``n_groups`` pseudo-types and using per-group mean
+    profiles.
+
+    This is not a substitute for a real curated reference like celldex's
+    HumanPrimaryCellAtlasData — labels are meaningless ("placeholder_type_N") and
+    carry no biological interpretation. It exists purely so the pipeline's schema
+    contract (an artifact with a ``singler_label`` column) holds end-to-end when no
+    real reference is available or desired, e.g. ``make scrna-signature-fixture``,
+    which must stay network-free (see ADR-0002).
+    """
+    from sklearn.cluster import KMeans
+
+    n_groups = min(n_groups, log_norm.shape[0])
+    kmeans = KMeans(n_clusters=n_groups, random_state=seed, n_init=10).fit(log_norm)
+
+    profiles = []
+    labels = [f"placeholder_type_{i}" for i in range(n_groups)]
+    for i in range(n_groups):
+        mask = kmeans.labels_ == i
+        profiles.append(log_norm[mask].mean(axis=0))
+    matrix_gene_by_group = np.asarray(profiles).T
+
+    return build_summarized_experiment_reference(matrix_gene_by_group, gene_names, labels)
+
+
 def run_singler(
     query_log_norm: np.ndarray,
     query_genes: list[str],

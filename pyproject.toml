@@ -56,6 +56,14 @@ ignore_missing_imports = true
 disallow_untyped_defs = true
 warn_unused_ignores = true
 
+# src/omicsatlas/scrna/pipeline.py's fixture entrypoint imports tests/fixtures at
+# runtime (by design — see its docstring); mypy follows that import for name
+# resolution, which would otherwise pull tests/ under the same strict-typing bar as
+# src/omicsatlas. tests/ is intentionally not held to that bar.
+[[tool.mypy.overrides]]
+module = "tests.*"
+ignore_errors = true
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "--cov=omicsatlas --cov-report=term-missing --cov-fail-under=85"
