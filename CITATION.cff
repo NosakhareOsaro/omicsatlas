@@ -1,0 +1,24 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it using these metadata."
+title: "OmicsAtlas"
+abstract: >-
+  A multi-modal explorer unifying single-cell RNA-seq, spatial transcriptomics,
+  ATAC-seq, and bulk RNA-seq analysis of human breast cancer, centered on
+  CrossOmicsConcordance, a statistically grounded metric for scoring agreement between
+  cell-type calls made independently across modalities.
+authors:
+  - family-names: Osaro
+    given-names: Nosakhare Odionfo
+    email: osaronosakhare@gmail.com
+license: MIT
+repository-code: "https://github.com/NosakhareOsaro/omicsatlas"
+version: 0.1.0.dev0
+date-released: "2026-07-28"
+keywords:
+  - bioinformatics
+  - single-cell RNA-seq
+  - spatial transcriptomics
+  - ATAC-seq
+  - bulk RNA-seq
+  - deconvolution
+  - breast cancer
