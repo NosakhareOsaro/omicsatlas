@@ -49,11 +49,7 @@ jobs:
       run:
         shell: bash -el {0}
     steps:
-      # persist-credentials: false — actions/checkout's default persisted
-      # GITHUB_TOKEN credential header gets picked up by remotes::install_github()'s
-      # HTTP client below and sent to api.github.com, where it's the wrong kind of
-      # token and gets rejected (401 Bad credentials) — validated empirically while
-      # wiring up this job. Not needed anyway since this job never pushes.
+      # This job never pushes, so no need to persist checkout credentials.
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
@@ -66,7 +62,14 @@ jobs:
           # See lint-and-test's comment above on this same pin.
           micromamba-version: "1.5.10-0"
 
+      # remotes' bundled fallback GitHub PAT (used for unauthenticated-rate-limit
+      # relief) is shared across all remotes users and gets rate-limited/rejected in
+      # practice (401 Bad credentials, reproduced on an actual CI run) — passing this
+      # workflow's own GITHUB_TOKEN as GITHUB_PAT is the standard fix (also what
+      # r-lib/actions itself does for the same reason).
       - name: Install BayesPrism (GitHub-only, pinned commit — see ADR-0004)
+        env:
+          GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
         run: |
           Rscript -e 'remotes::install_github("Danko-Lab/BayesPrism/BayesPrism@19052052a6f30833b27e2148294459b0ba2f923e")'
 
@@ -94,7 +97,14 @@ jobs:
           cache-environment: true
           micromamba-version: "1.5.10-0"
 
+      # remotes' bundled fallback GitHub PAT (used for unauthenticated-rate-limit
+      # relief) is shared across all remotes users and gets rate-limited/rejected in
+      # practice (401 Bad credentials, reproduced on an actual CI run) — passing this
+      # workflow's own GITHUB_TOKEN as GITHUB_PAT is the standard fix (also what
+      # r-lib/actions itself does for the same reason).
       - name: Install BayesPrism (GitHub-only, pinned commit — see ADR-0004)
+        env:
+          GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
         run: |
           Rscript -e 'remotes::install_github("Danko-Lab/BayesPrism/BayesPrism@19052052a6f30833b27e2148294459b0ba2f923e")'
 
