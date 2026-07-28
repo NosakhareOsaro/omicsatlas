@@ -108,12 +108,12 @@ jobs:
         run: |
           Rscript -e 'remotes::install_github("Danko-Lab/BayesPrism/BayesPrism@19052052a6f30833b27e2148294459b0ba2f923e")'
 
-      - name: Install OmicsAtlasBulk
-        working-directory: r_package/OmicsAtlasBulk
-        run: Rscript -e 'devtools::install(dependencies = FALSE, upgrade = "never")'
-
-      # Validates the pkgdown site builds cleanly. Deployment happens via the
-      # unified docs site (Phase 7) — see docs/README.md.
+      # pkgdown::build_site() loads the package from source via pkgload, so it
+      # doesn't need a prior devtools::install() step (which also hit a pak/
+      # architecture issue in local Apple Silicon dev — see ADR-0004's Rosetta
+      # note; unrelated to this job, just confirms the install step was
+      # unnecessary here). Validates the site builds cleanly; deployment happens
+      # via the unified docs site (Phase 7) — see docs/README.md.
       - name: Build pkgdown site
         working-directory: r_package/OmicsAtlasBulk
         run: Rscript -e 'pkgdown::build_site()'
