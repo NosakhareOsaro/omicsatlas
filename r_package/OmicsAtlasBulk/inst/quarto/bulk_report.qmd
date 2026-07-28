@@ -1,0 +1,118 @@
+---
+title: "OmicsAtlas Bulk RNA-seq Report"
+format:
+  html:
+    toc: true
+    embed-resources: true
+params:
+  report_data_path: ""
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+report_data <- readRDS(params$report_data_path)
+deseq2_res <- report_data$deseq2_res
+edger_res <- report_data$edger_res
+comparison <- report_data$comparison
+enrichment_deseq2 <- report_data$enrichment_deseq2
+enrichment_edger <- report_data$enrichment_edger
+deconvolution_props <- report_data$deconvolution_props
+dataset_label <- report_data$dataset_label
+```
+
+**Dataset:** `r dataset_label`
+
+Every table, count, and plot below is computed directly from the DESeq2/edgeR/
+enrichment/deconvolution objects the pipeline itself produced for this dataset
+run - this report has no hardcoded numbers or narrative.
+
+## Differential expression summary
+
+```{r}
+de_summary <- data.frame(
+  method = c("DESeq2", "edgeR"),
+  n_tested = c(nrow(deseq2_res), nrow(edger_res)),
+  n_significant = c(sum(deseq2_res$is_significant), sum(edger_res$is_significant))
+)
+knitr::kable(de_summary)
+```
+
+### Top DESeq2 genes
+
+```{r}
+top_deseq2 <- deseq2_res[order(deseq2_res$padj), ]
+knitr::kable(head(top_deseq2, 10))
+```
+
+### Top edgeR genes
+
+```{r}
+top_edger <- edger_res[order(edger_res$FDR), ]
+knitr::kable(head(top_edger, 10))
+```
+
+## DESeq2 vs. edgeR comparison
+
+```{r}
+overlap_summary <- data.frame(
+  category = c("Both methods", "DESeq2 only", "edgeR only"),
+  n_genes = c(
+    length(comparison$overlap$both),
+    length(comparison$overlap$deseq2_only),
+    length(comparison$overlap$edger_only)
+  )
+)
+knitr::kable(overlap_summary)
+```
+
+```{r}
+comparison$venn_plot
+```
+
+```{r, results = "asis"}
+if (nrow(comparison$discrepancy) > 0) {
+  print(knitr::kable(head(comparison$discrepancy, 20)))
+} else {
+  cat("No genes were called significant by exactly one method on this dataset.")
+}
+```
+
+## Functional enrichment
+
+```{r, results = "asis"}
+render_enrichment_section <- function(enrichment, method_label) {
+  cat(sprintf("### %s\n\n", method_label))
+  if (is.null(enrichment)) {
+    cat("Not run for this dataset.\n\n")
+    return(invisible())
+  }
+  if (!is.null(enrichment$go) && nrow(as.data.frame(enrichment$go)) > 0) {
+    go_df <- as.data.frame(enrichment$go)
+    cat("**GO enrichment (top terms):**\n\n")
+    print(knitr::kable(head(go_df[, c("Description", "GeneRatio", "p.adjust")], 10)))
+    cat("\n\n")
+  } else {
+    cat("No significant GO enrichment.\n\n")
+  }
+  if (!is.null(enrichment$kegg) && nrow(as.data.frame(enrichment$kegg)) > 0) {
+    kegg_df <- as.data.frame(enrichment$kegg)
+    cat("**KEGG enrichment (top terms):**\n\n")
+    print(knitr::kable(head(kegg_df[, c("Description", "GeneRatio", "p.adjust")], 10)))
+    cat("\n\n")
+  } else {
+    cat("No significant KEGG enrichment (or not run).\n\n")
+  }
+}
+render_enrichment_section(enrichment_deseq2, "DESeq2 significant genes")
+render_enrichment_section(enrichment_edger, "edgeR significant genes")
+```
+
+## BayesPrism deconvolution
+
+```{r, results = "asis"}
+if (!is.null(deconvolution_props)) {
+  print(knitr::kable(round(deconvolution_props, 3)))
+} else {
+  cat("Deconvolution was not run for this dataset.")
+}
+```
