@@ -2,6 +2,8 @@
 
 export("%>%")
 export(compare_de_methods)
+export(load_scrna_signature)
+export(run_bayesprism_deconvolution)
 export(run_deseq2)
 export(run_edger)
 export(run_enrichment)
