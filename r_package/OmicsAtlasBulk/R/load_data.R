@@ -50,7 +50,7 @@ read_matched_bulk_counts <- function(counts_path) {
 #' @param manifest_path Path to the fetch manifest JSON, e.g.
 #'   `data/.provenance/tcga_brca_subset.json`.
 #' @param repo_root Root directory the manifest's `dest` paths (e.g.
-#'   `data/raw/bulk/tcga_brca/...`) are relative to. Default: two directories up
+#'   `data/raw/bulk/tcga_brca/...`) are relative to. Default: three directories up
 #'   from `manifest_path` (right for the manifest's real
 #'   `data/.provenance/tcga_brca_subset.json` location - the repository root -
 #'   but overridable, e.g. for tests using a fixture manifest elsewhere).
@@ -66,7 +66,7 @@ read_matched_bulk_counts <- function(counts_path) {
 #' se <- read_tcga_brca_counts("data/.provenance/tcga_brca_subset.json")
 #' }
 #' @export
-read_tcga_brca_counts <- function(manifest_path, repo_root = dirname(dirname(manifest_path))) {
+read_tcga_brca_counts <- function(manifest_path, repo_root = dirname(dirname(dirname(manifest_path)))) {
   manifest <- jsonlite::fromJSON(manifest_path, simplifyVector = FALSE)
   files_info <- manifest$files
 

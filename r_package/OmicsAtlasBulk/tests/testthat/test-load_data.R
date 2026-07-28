@@ -48,6 +48,34 @@ test_that("read_tcga_brca_counts reads the bundled fixture manifest and TSVs", {
   expect_identical(as.character(col_data$sample_type), c("Primary Tumor", "Solid Tissue Normal"))
 })
 
+test_that("read_tcga_brca_counts' default repo_root matches the real data/.provenance layout", {
+  # Mirrors the real repo layout (repo_root/data/.provenance/manifest.json,
+  # repo_root/data/raw/bulk/tcga_brca/*.tsv) so the default repo_root computation
+  # is exercised end-to-end, not just overridden away as in the fixture test above.
+  fake_repo_root <- withr::local_tempdir()
+  provenance_dir <- file.path(fake_repo_root, "data", ".provenance")
+  dest_dir <- file.path(fake_repo_root, "data", "raw", "bulk", "tcga_brca")
+  dir.create(provenance_dir, recursive = TRUE)
+  dir.create(dest_dir, recursive = TRUE)
+
+  fixture_dir <- system.file("extdata", "tcga_fixture", package = "OmicsAtlasBulk")
+  file.copy(file.path(fixture_dir, "sample1.tsv"), file.path(dest_dir, "sample1.tsv"))
+  manifest_path <- file.path(provenance_dir, "tcga_brca_subset.json")
+  jsonlite::write_json(
+    list(files = list(list(
+      file_id = "fixture-file-1", case_submitter_id = "TCGA-AA-0001",
+      sample_type = "Primary Tumor", dest = "data/raw/bulk/tcga_brca/sample1.tsv"
+    ))),
+    manifest_path,
+    auto_unbox = TRUE
+  )
+
+  se <- read_tcga_brca_counts(manifest_path)
+
+  expect_equal(ncol(se), 1)
+  expect_equal(SummarizedExperiment::assay(se, "counts")["ENSG00000000005", "fixture-file-1"], 100)
+})
+
 test_that("read_tcga_brca_counts errors if gene order differs between files", {
   fixture_dir <- withr::local_tempdir()
   writeLines(
