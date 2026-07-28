@@ -1,5 +1,4 @@
-# OmicsAtlasBulk (R package)
+# r_package
 
-Placeholder. Will wrap the bulk RNA-seq DESeq2/edgeR/clusterProfiler flow as a proper R
-package (usethis scaffold, roxygen2 docs, testthat coverage, pkgdown site). Added in
-Phase 2.
+Holds `OmicsAtlasBulk`, the bulk RNA-seq R package — see
+[`OmicsAtlasBulk/README.md`](OmicsAtlasBulk/README.md).
