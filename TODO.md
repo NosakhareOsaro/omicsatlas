@@ -20,6 +20,15 @@ Tracks progress against the phase plan. Updated at the start/end of each phase.
 - [ ] **Phase 7 — Documentation, manuscript, release**: Quarto site, methods paper,
       Zenodo DOI, CITATION.cff finalised, README rewrite, v1.0.0 tag.
 
+## Known limitations / follow-ups
+
+- Phase 1's generic SingleR reference produces some biologically implausible
+  cell-type labels (`Chondrocytes`, `Smooth_muscle_cells` at ~9% each in Phase 2
+  matched-bulk deconvolution) in tissue types the reference wasn't designed for.
+  Tracked as a candidate Phase 5 follow-up (breast-specific reference or CNV-based
+  malignant/normal refinement) since it affects labels feeding both RCTD and
+  BayesPrism deconvolution.
+
 ## Current status
 
 Phase 2 in progress (2026-07-29): matched-bulk (primary) arm complete and reviewed.
