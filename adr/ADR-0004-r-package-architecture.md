@@ -80,6 +80,62 @@ commit SHA (confirmed and recorded when I reach that commit), not a floating bra
 reference, so the package's own dependency resolution stays reproducible the same
 way `environment/env.yml`'s conda/pip pins are.
 
+### BayesPrism cell-state granularity: collapsing rare type/state combinations (added 2026-07-28)
+
+`run_bayesprism_deconvolution()` builds BayesPrism's required cell-state labels as
+`paste(cell_type, raw_state)` (combining `singler_label` and `leiden` - BayesPrism
+requires states to nest within types, and `leiden` clusters don't nest under
+`singler_label` on their own). This nests correctly, but the first real run against
+the actual Phase 1 signature (21,585 cells) surfaced a problem the synthetic test
+fixture didn't: it produces **99 distinct type/state combinations**, and their size
+distribution is severely right-skewed - 53% have fewer than 5 cells, 66% fewer than
+10, and in every one of the 23 cell types, 1-3 Leiden clusters carry nearly all of
+that type's cells while the rest are near-singletons (e.g. `T_cells`: 8 clusters
+sized 5621, 3055, 26, 12, 9, 7, 2, 1). BayesPrism's own output flagged this
+("recommend to have sufficient number of cells in each cell state"), and Gibbs
+sampling's self-reported estimated runtime on the unmodified 99-state design was
+**13 hours 5 minutes** - almost certainly driven by sampling over dozens of
+effectively-singleton states that add estimation cost without adding real signal.
+
+**Decision:** pool any `cell_type`/raw-`cell_state` combination with fewer than
+`min_state_cells` cells (new parameter, default `30`) into a single
+`"<cell_type>_other"` state for that type, via `collapse_rare_cell_states()`. `N =
+30` was chosen directly from the measured distribution above, not guessed: it
+collapses 99 states down to 42 while pooling only ~2.0% of all cells into `_other`
+buckets. The threshold isn't finely tuned - 20 gives 47 states (1.44% pooled) and 50
+gives 41 states (2.21% pooled), so anywhere in the 20-50 range lands within a few
+states of the same outcome, past which returns clearly diminish. This only changes
+`cell_state_labels` granularity: `cell_type_labels` (and therefore the per-type
+proportions `run_bayesprism_deconvolution()` ultimately reports via
+`get.fraction(..., state.or.type = "type")`) are computed the same way regardless of
+how finely states are subdivided within each type.
+
+### n_cores: default stays 1, the real matched-bulk run used 8 (added 2026-07-29)
+
+Even after the 99→42 state collapse above, Gibbs sampling's self-reported estimate
+on the real 21,585-cell reference was still **7 hours 15 minutes** at the default
+`n_cores = 1`. BayesPrism (via `snowfall`/`snow`) parallelizes Gibbs sampling
+independently per bulk sample - all 24 matched-bulk samples' posterior draws are
+computed with no cross-sample dependency - so this is embarrassingly parallel across
+samples, not just across genes/states. Re-running with `n_cores = 8` (this
+machine's physical core count) brought the estimate down to **45 minutes** for the
+first sampling pass (and a further ~26 minutes for BayesPrism's second,
+updated-reference pass), close to the hoped-for near-linear speedup.
+
+`run_bayesprism_deconvolution()`'s own default stays `n_cores = 1` - the fixture
+tests and CI need single-process, deterministic runs, and their synthetic data is
+tiny enough that parallelizing wouldn't meaningfully help anyway.
+`scripts/run_bulk_pipeline_matched.R` explicitly passes `n_cores = 8` for the real
+run instead, with a comment recording why.
+
+The real matched-bulk run's actual wall-clock time (data load through writing
+`bayesprism_cell_type_proportions.csv`) was **~113 minutes** - longer than the raw
+45+26 minute Gibbs estimates because roughly the first third of the run overlapped
+with an unrelated stray process (a leftover, pre-collapse-fix `n_cores = 1` run from
+before this session, discovered and killed mid-run - see `TODO.md`/`CHANGELOG.md`)
+competing for the same 8 physical cores; CPU utilization on this run's workers
+measurably rose (from the 29-60% range to 77-83%) once that process was killed.
+
 ### R CMD check and pkgdown in CI
 
 A new `r-cmd-check` CI job (via `r-lib/actions/check-r-package`) runs alongside the
@@ -112,6 +168,14 @@ rewrite. No submission is scheduled as part of this project.
   behaviour on the actual reference genome/full read sets is untested by this
   project directly — an accepted limitation given the controlled-access constraints,
   stated plainly rather than implied to be validated.
+- `min_state_cells` pools rare Leiden clusters into a per-type `"other"` state
+  rather than modelling them individually — a small, deliberate loss of within-type
+  resolution for the ~2% of cells in those clusters, in exchange for stable
+  estimation and tractable Gibbs-sampling runtime for everyone else.
+- The real matched-bulk run needs `n_cores = 8` (not the package default of `1`) to
+  finish in a practical time; anyone re-running it on a machine with fewer cores
+  should expect proportionally longer runtime, and should check for other
+  processes competing for the same cores first — that cost this run real time here.
 
 ## Alternatives considered
 
@@ -126,3 +190,12 @@ rewrite. No submission is scheduled as part of this project.
   completeness (tested honestly on synthetic data) keeps the package's stated
   capability matching its actual capability, the same principle Phase 1 applied to
   scVelo.
+- **Keeping the raw `paste(cell_type, raw_state)` cross product, uncollapsed**:
+  rejected — the real signature's 99-state distribution is severe enough (53% of
+  states under 5 cells) that most states can't support a stable expression profile,
+  and it drove Gibbs sampling's own estimated runtime to 13+ hours.
+- **Dropping `cell_state_col` entirely and running BayesPrism at type-level states
+  only**: rejected — throws away the within-type heterogeneity signal for the many
+  types whose dominant Leiden clusters *do* have plenty of cells (e.g. `T_cells`'s
+  two largest clusters alone total 8676 of its 8733 cells), which is exactly the
+  finer-grained signal BayesPrism recommends providing when it's actually available.
