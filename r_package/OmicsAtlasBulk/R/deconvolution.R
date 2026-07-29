@@ -34,7 +34,19 @@
 #'   their own (verified on the real signature: a single Leiden cluster spans
 #'   nearly every SingleR type). Combining the two guarantees valid nesting by
 #'   construction, for any `cell_type_col`/`cell_state_col` pair, without reshaping
-#'   the underlying artifact.
+#'   the underlying artifact. Combinations with fewer than `min_state_cells` cells
+#'   are further pooled into a per-type `"other"` state - see `min_state_cells`.
+#' @param min_state_cells Minimum number of cells a `cell_type`/`cell_state_col`
+#'   combination must have to be kept as its own BayesPrism cell state; smaller
+#'   combinations are pooled into a single `"<cell_type>_other"` state per type.
+#'   Default `30` - chosen from the real Phase 1 signature's state-size distribution
+#'   (99 raw type x state combinations; 53% had fewer than 5 cells; right-skewed,
+#'   with 1-3 dominant clusters carrying nearly all cells in every type). `N = 30`
+#'   collapses that down to 42 states while pooling only ~2% of cells; the range
+#'   20-50 all land within a few states of each other, so 30 isn't a finely-tuned
+#'   edge case (see `ADR-0004`). This only changes `cell_state_labels` granularity -
+#'   `cell_type_labels`, and therefore the per-type proportions BayesPrism reports,
+#'   are unaffected.
 #' @param n_cores Passed to `BayesPrism::run.prism()`. Default `1`.
 #' @param ... Additional arguments passed to `BayesPrism::new.prism()` (e.g.
 #'   `outlier.cut`, `outlier.fraction`).
@@ -64,6 +76,7 @@ run_bayesprism_deconvolution <- function(bulk_se,
                                           assay_name = "counts",
                                           cell_type_col = "singler_label",
                                           cell_state_col = "leiden",
+                                          min_state_cells = 30,
                                           n_cores = 1,
                                           ...) {
   ref_counts <- t(as.matrix(SummarizedExperiment::assay(reference_sce)))
@@ -76,8 +89,12 @@ run_bayesprism_deconvolution <- function(bulk_se,
   # don't nest - verified empirically on the real signature artifact (a single
   # Leiden cluster spans nearly every SingleR type). Combining type and raw state
   # into one label nests by construction while still carrying leiden's within-type
-  # heterogeneity signal, without reshaping the underlying artifact at all.
-  cell_state_labels <- paste(cell_type_labels, cell_state_raw, sep = "_")
+  # heterogeneity signal, without reshaping the underlying artifact at all. On the
+  # real signature this produces many near-singleton states unsuited to stable
+  # profile estimation (and blew Gibbs sampling's estimated runtime out to 13+
+  # hours on a first real run) - collapse_rare_cell_states() pools those below
+  # min_state_cells into a per-type "other" state (see ADR-0004).
+  cell_state_labels <- collapse_rare_cell_states(cell_type_labels, cell_state_raw, min_state_cells)
 
   bulk_counts <- t(round(as.matrix(SummarizedExperiment::assay(bulk_se, assay_name))))
 
@@ -92,6 +109,36 @@ run_bayesprism_deconvolution <- function(bulk_se,
   )
   result <- BayesPrism::run.prism(prism = prism, n.cores = n_cores)
   BayesPrism::get.fraction(bp = result, which.theta = "final", state.or.type = "type")
+}
+
+#' Pool rare cell-type/cell-state combinations into a per-type "other" state
+#'
+#' `paste(cell_type, raw_state)` guarantees BayesPrism's required type/state nesting
+#' (see `run_bayesprism_deconvolution()`) but, on the real Phase 1 signature,
+#' produces many near-singleton combinations unsuited to stable expression-profile
+#' estimation - see `ADR-0004` for the real state-size distribution this was measured
+#' against and why `min_cells` defaults to `30` there. Combinations with fewer than
+#' `min_cells` cells are replaced with a single `"<cell_type>_other"` label per type;
+#' combinations at or above `min_cells` pass through as `"<cell_type>_<raw_state>"`
+#' unchanged. Rarity is judged from each combination's total size across all cells
+#' passed in, not recomputed after pooling.
+#'
+#' @param cell_type_labels Character vector, one per cell.
+#' @param cell_state_raw Character vector, one per cell (the raw `cell_state_col`
+#'   values, before combining with type).
+#' @param min_cells Minimum cell count for a `cell_type`/`cell_state_raw` combination
+#'   to be kept as its own state.
+#'
+#' @return Character vector of final cell-state labels, one per cell.
+#' @keywords internal
+collapse_rare_cell_states <- function(cell_type_labels, cell_state_raw, min_cells) {
+  combined <- paste(cell_type_labels, cell_state_raw, sep = "_")
+  combo_sizes <- table(combined)
+  # unname()/as.integer(): table's `[` keeps dim/dimnames on the lookup result, and
+  # ifelse() then copies that shape onto its output - unwrapped, the returned labels
+  # would silently carry array dim/dimnames instead of being a plain character vector.
+  sizes <- unname(as.integer(combo_sizes[combined]))
+  ifelse(sizes < min_cells, paste0(cell_type_labels, "_other"), combined)
 }
 
 #' Load the OmicsAtlas scRNA-seq signature artifact

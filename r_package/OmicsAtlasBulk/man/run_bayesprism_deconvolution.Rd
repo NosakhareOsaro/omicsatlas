@@ -10,6 +10,7 @@ run_bayesprism_deconvolution(
   assay_name = "counts",
   cell_type_col = "singler_label",
   cell_state_col = "leiden",
+  min_state_cells = 30,
   n_cores = 1,
   ...
 )
@@ -38,7 +39,20 @@ raw values directly - BayesPrism requires states to nest within types, and
 their own (verified on the real signature: a single Leiden cluster spans
 nearly every SingleR type). Combining the two guarantees valid nesting by
 construction, for any \code{cell_type_col}/\code{cell_state_col} pair, without reshaping
-the underlying artifact.}
+the underlying artifact. Combinations with fewer than \code{min_state_cells} cells
+are further pooled into a per-type \code{"other"} state - see \code{min_state_cells}.}
+
+\item{min_state_cells}{Minimum number of cells a \code{cell_type}/\code{cell_state_col}
+combination must have to be kept as its own BayesPrism cell state; smaller
+combinations are pooled into a single \code{"<cell_type>_other"} state per type.
+Default \code{30} - chosen from the real Phase 1 signature's state-size distribution
+(99 raw type x state combinations; 53\% had fewer than 5 cells; right-skewed,
+with 1-3 dominant clusters carrying nearly all cells in every type). \code{N = 30}
+collapses that down to 42 states while pooling only ~2\% of cells; the range
+20-50 all land within a few states of each other, so 30 isn't a finely-tuned
+edge case (see \code{ADR-0004}). This only changes \code{cell_state_labels} granularity -
+\code{cell_type_labels}, and therefore the per-type proportions BayesPrism reports,
+are unaffected.}
 
 \item{n_cores}{Passed to \code{BayesPrism::run.prism()}. Default \code{1}.}
 
