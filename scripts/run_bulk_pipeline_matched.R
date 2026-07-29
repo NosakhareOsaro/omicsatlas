@@ -57,10 +57,16 @@ if (!file.exists(signature_h5ad_path)) {
 message("Loading Phase 1 scRNA-seq signature artifact from ", signature_h5ad_path, "...")
 reference_sce <- load_scrna_signature(signature_h5ad_path)
 
-message("Running BayesPrism deconvolution (this takes several minutes)...")
+message("Running BayesPrism deconvolution (this takes a while)...")
+# n_cores = 8: BayesPrism's Gibbs sampling parallelizes independently per bulk
+# sample (24 samples here), so this scales close to linearly on this machine's 8
+# physical cores - see ADR-0004. run_bayesprism_deconvolution()'s own default stays
+# 1, which is what the fixture-based tests/CI use, for deterministic single-process
+# runs there.
 proportions <- run_bayesprism_deconvolution(
   bulk_se = bulk_se,
-  reference_sce = reference_sce
+  reference_sce = reference_sce,
+  n_cores = 8
 )
 
 output_dir <- file.path(repo_root, "data", "processed", "bulk", "gse176078_matched")
