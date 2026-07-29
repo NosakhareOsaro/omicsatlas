@@ -15,6 +15,13 @@ pre-commit install
 
 Or via Docker: `docker build -f environment/Dockerfile -t omicsatlas .`
 
+Always invoke R/Quarto through `conda activate omicsatlas` (or `conda run -n
+omicsatlas ...`), never by calling binaries via absolute path with manual `PATH`
+prepending — conda-forge's `quarto` package only sets its required env vars
+(`QUARTO_PANDOC`, `QUARTO_SHARE_PATH`, `QUARTO_DENO`, `QUARTO_DART_SASS`) via an
+activation hook, and skipping activation has already caused two false "broken
+environment" investigations in this project.
+
 ## Before opening a PR
 
 - `pre-commit run --all-files` must pass (ruff, black, mypy, plus basic hygiene hooks).
