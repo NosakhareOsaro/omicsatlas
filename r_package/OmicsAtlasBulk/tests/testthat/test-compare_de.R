@@ -61,6 +61,24 @@ test_that("compare_de_methods correctly separates both/deseq2_only/edger_only", 
   expect_equal(gene3_row$edger_logFC, 0)
 })
 
+test_that("extract_fold_change() reads log2FoldChange from a DESeq2-shaped result", {
+  deseq2_shaped <- data.frame(log2FoldChange = c(1, -2, 0.5), padj = c(0.01, 0.02, 0.5))
+
+  expect_equal(extract_fold_change(deseq2_shaped), c(1, -2, 0.5))
+})
+
+test_that("extract_fold_change() reads logFC from an edgeR-shaped result", {
+  edger_shaped <- data.frame(logFC = c(3, -1, 0.2), FDR = c(0.01, 0.02, 0.5))
+
+  expect_equal(extract_fold_change(edger_shaped), c(3, -1, 0.2))
+})
+
+test_that("extract_fold_change() errors explicitly when neither column is present", {
+  neither <- data.frame(some_other_stat = c(1, 2, 3))
+
+  expect_error(extract_fold_change(neither), "neither a `log2FoldChange`.*nor `logFC`")
+})
+
 test_that("compare_de_methods handles zero discrepant genes cleanly", {
   genes <- paste0("GENE", 1:3)
   same_sig <- data.frame(is_significant = c(TRUE, FALSE, TRUE), row.names = genes)

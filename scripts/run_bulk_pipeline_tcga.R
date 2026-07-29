@@ -55,7 +55,7 @@ gene_symbols <- SummarizedExperiment::rowData(bulk_se)$gene_symbol
 
 run_enrichment_for <- function(res, label) {
   sig_genes <- unique(gene_symbols[res$is_significant])
-  ranked <- stats::setNames(res$log2FoldChange, gene_symbols)
+  ranked <- stats::setNames(extract_fold_change(res), gene_symbols)
   ranked <- ranked[!is.na(ranked) & !duplicated(names(ranked))]
   message(sprintf("Running enrichment on %s significant genes (%d genes, live KEGG)...", label, length(sig_genes)))
   run_enrichment(sig_genes, ranked, run_kegg = TRUE)

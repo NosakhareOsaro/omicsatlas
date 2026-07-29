@@ -2,7 +2,12 @@
 
 ## Status
 
-Accepted
+Accepted. **Addendum (2026-07-29):** the real failure that motivated this ADR
+turned out to have a different root cause than diagnosed below - a deterministic
+`logFC`/`log2FoldChange` column-name mismatch in the pipeline script, not KEGG
+flakiness (see `ADR-0006`). `retry_with_backoff()` itself is correctly implemented
+and tested against genuine KEGG API flakiness (a real, if secondary, concern) and
+is being kept; it just wasn't the fix for that particular incident.
 
 ## Context
 

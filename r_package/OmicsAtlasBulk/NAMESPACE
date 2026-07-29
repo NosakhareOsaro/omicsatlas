@@ -2,6 +2,7 @@
 
 export("%>%")
 export(compare_de_methods)
+export(extract_fold_change)
 export(filter_low_count_genes)
 export(load_scrna_signature)
 export(read_matched_bulk_counts)
