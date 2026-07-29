@@ -33,6 +33,12 @@
 #'   `enrichResult`/`gseaResult`, or `NULL` if that step had no input or was
 #'   skipped).
 #'
+#' The KEGG step is wrapped in [retry_with_backoff()] - KEGG's REST API has no
+#' documented rate limit but is known to be occasionally flaky/rate-limited under
+#' repeated calls (observed directly during this project's real TCGA-BRCA pipeline
+#' run: 3 calls in quick succession, one outright failure that a bare retry of the
+#' identical call then succeeded at - see `ADR-0005`).
+#'
 #' @examples
 #' data(example_bulk_se)
 #' res <- run_deseq2(example_bulk_se, condition_column = "condition")
@@ -70,9 +76,11 @@ run_enrichment <- function(gene_symbols,
       fromType = "SYMBOL", toType = "ENTREZID", OrgDb = organism_db
     )
     if (nrow(entrez_map) > 0) {
-      kegg_result <- clusterProfiler::enrichKEGG(
-        gene = entrez_map$ENTREZID, organism = "hsa", pvalueCutoff = pvalue_cutoff
-      )
+      kegg_result <- retry_with_backoff(function() {
+        clusterProfiler::enrichKEGG(
+          gene = entrez_map$ENTREZID, organism = "hsa", pvalueCutoff = pvalue_cutoff
+        )
+      })
     }
   }
 
@@ -87,4 +95,38 @@ run_enrichment <- function(gene_symbols,
   )
 
   list(go = go_result, kegg = kegg_result, gsea = gsea_result)
+}
+
+#' Retry a call with exponential backoff
+#'
+#' Small, generic helper for wrapping flaky external calls (currently just
+#' [run_enrichment()]'s live KEGG REST API call - see `ADR-0005`) in a bounded
+#' number of retries, rather than either failing on the first transient error or
+#' retrying silently/indefinitely.
+#'
+#' @param fn A zero-argument function to call.
+#' @param max_attempts Maximum number of attempts, including the first. Default `3`.
+#' @param delays Numeric vector of seconds to sleep between attempts; only the
+#'   first `max_attempts - 1` entries are used. Default `c(2, 8, 30)`.
+#' @param on_retry Called with a single message string before each retry's sleep.
+#'   Default [message()]; tests pass a stub to capture/suppress this without
+#'   asserting on real console output.
+#'
+#' @return The result of the first successful call to `fn()`.
+#' @keywords internal
+retry_with_backoff <- function(fn, max_attempts = 3, delays = c(2, 8, 30), on_retry = message) {
+  for (attempt in seq_len(max_attempts)) {
+    result <- tryCatch(list(value = fn()), error = function(e) list(error = e))
+    if (is.null(result$error)) {
+      return(result$value)
+    }
+    if (attempt == max_attempts) {
+      stop(result$error)
+    }
+    on_retry(sprintf(
+      "Attempt %d/%d failed (%s); retrying in %gs...",
+      attempt, max_attempts, conditionMessage(result$error), delays[[attempt]]
+    ))
+    Sys.sleep(delays[[attempt]])
+  }
 }

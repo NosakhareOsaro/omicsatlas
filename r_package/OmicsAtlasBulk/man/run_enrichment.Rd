@@ -37,6 +37,12 @@ return \code{kegg = NULL}. Default \code{TRUE}.}
 A list with \code{go}, \code{kegg}, and \code{gsea} elements (each a clusterProfiler
 \code{enrichResult}/\code{gseaResult}, or \code{NULL} if that step had no input or was
 skipped).
+
+The KEGG step is wrapped in \code{\link[=retry_with_backoff]{retry_with_backoff()}} - KEGG's REST API has no
+documented rate limit but is known to be occasionally flaky/rate-limited under
+repeated calls (observed directly during this project's real TCGA-BRCA pipeline
+run: 3 calls in quick succession, one outright failure that a bare retry of the
+identical call then succeeded at - see \code{ADR-0005}).
 }
 \description{
 Runs over-representation analysis (GO, KEGG) on a significant-gene set and gene

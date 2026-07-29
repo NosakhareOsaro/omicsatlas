@@ -46,3 +46,57 @@ test_that("run_enrichment's KEGG step returns a real enrichResult (network requi
 
   expect_s4_class(result$kegg, "enrichResult")
 })
+
+test_that("retry_with_backoff succeeds once the wrapped call stops failing, logging each retry", {
+  attempt_count <- 0
+  flaky_fn <- function() {
+    attempt_count <<- attempt_count + 1
+    if (attempt_count < 3) {
+      stop(sprintf("simulated transient failure #%d", attempt_count))
+    }
+    "real result"
+  }
+  retry_messages <- character(0)
+  capture_retry <- function(msg) retry_messages <<- c(retry_messages, msg)
+
+  result <- retry_with_backoff(flaky_fn, max_attempts = 3, delays = c(0, 0), on_retry = capture_retry)
+
+  expect_identical(result, "real result")
+  expect_identical(attempt_count, 3)
+  expect_length(retry_messages, 2)
+  expect_match(retry_messages[1], "simulated transient failure #1")
+  expect_match(retry_messages[2], "simulated transient failure #2")
+})
+
+test_that("retry_with_backoff propagates the error once all attempts are exhausted", {
+  attempt_count <- 0
+  always_fails <- function() {
+    attempt_count <<- attempt_count + 1
+    stop("simulated permanent failure")
+  }
+
+  expect_error(
+    retry_with_backoff(always_fails, max_attempts = 3, delays = c(0, 0), on_retry = function(msg) invisible(NULL)),
+    "simulated permanent failure"
+  )
+  expect_identical(attempt_count, 3)
+})
+
+test_that("retry_with_backoff succeeds immediately without retrying or sleeping", {
+  call_count <- 0
+  retry_called <- FALSE
+  always_succeeds <- function() {
+    call_count <<- call_count + 1
+    "immediate success"
+  }
+
+  result <- retry_with_backoff(
+    always_succeeds,
+    max_attempts = 3, delays = c(0, 0),
+    on_retry = function(msg) retry_called <<- TRUE
+  )
+
+  expect_identical(result, "immediate success")
+  expect_identical(call_count, 1)
+  expect_false(retry_called)
+})
