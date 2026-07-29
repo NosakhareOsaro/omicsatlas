@@ -97,6 +97,71 @@ test_that("run_bayesprism_deconvolution recovers known ground-truth mixture prop
   expect_equal(estimated_dominant, true_dominant)
 })
 
+test_that("collapse_rare_cell_states() pools sub-threshold type/state combinations into '<type>_other'", {
+  # Mix of combinations exercising: a combination well above the threshold (kept
+  # unchanged), one exactly *at* the threshold (kept - the cutoff is "< min_cells",
+  # not "<="), a combination below threshold in a type that also has a large
+  # combination (collapsed into that type's "_other"), a type whose *only*
+  # combination is below threshold (still renamed to "_other", not left alone just
+  # because there's nothing else in the type to merge with), and a type with two
+  # separate large combinations that must both survive distinctly (not
+  # over-collapsed into one "_other" state).
+  cell_type_labels <- c(
+    rep("TypeA", 5), rep("TypeA", 3), rep("TypeA", 1),
+    rep("TypeB", 2),
+    rep("TypeC", 4), rep("TypeC", 4)
+  )
+  cell_state_raw <- c(
+    rep("big", 5), rep("boundary", 3), rep("tiny", 1),
+    rep("onlysmall", 2),
+    rep("s1", 4), rep("s2", 4)
+  )
+
+  result <- collapse_rare_cell_states(cell_type_labels, cell_state_raw, min_cells = 3)
+
+  expect_equal(result[cell_state_raw == "big"], rep("TypeA_big", 5))
+  expect_equal(result[cell_state_raw == "boundary"], rep("TypeA_boundary", 3))
+  expect_equal(result[cell_state_raw == "tiny"], "TypeA_other")
+  expect_equal(result[cell_state_raw == "onlysmall"], rep("TypeB_other", 2))
+  expect_equal(result[cell_state_raw == "s1"], rep("TypeC_s1", 4))
+  expect_equal(result[cell_state_raw == "s2"], rep("TypeC_s2", 4))
+})
+
+test_that("run_bayesprism_deconvolution's min_state_cells collapse doesn't break ground-truth recovery", {
+  testthat::skip_on_cran()
+  # Same synthetic fixture as above, but split TypeC's cells across a dominant
+  # cluster and a handful of rare sub-clusters, so this exercises
+  # run_bayesprism_deconvolution() end-to-end with collapsing actually engaged
+  # (min_state_cells default 30 versus a fixture this small), not just
+  # collapse_rare_cell_states() in isolation.
+  withr::local_seed(2)
+  fixture <- make_synthetic_reference_and_bulk(seed = 2)
+
+  leiden <- SummarizedExperiment::colData(fixture$reference_sce)$leiden
+  is_typec <- leiden == "TypeC"
+  typec_idx <- which(is_typec)
+  # Carve 3 of TypeC's 15 cells off into rare singleton sub-clusters; the rest stay
+  # in the dominant cluster.
+  new_leiden <- leiden
+  new_leiden[typec_idx[1]] <- "rare1"
+  new_leiden[typec_idx[2]] <- "rare2"
+  new_leiden[typec_idx[3]] <- "rare3"
+  new_leiden[typec_idx[-(1:3)]] <- "main"
+  SummarizedExperiment::colData(fixture$reference_sce)$leiden <- new_leiden
+
+  estimated <- run_bayesprism_deconvolution(
+    bulk_se = fixture$bulk_se,
+    reference_sce = fixture$reference_sce,
+    min_state_cells = 5,
+    outlier.cut = 0.5,
+    outlier.fraction = 0.5
+  )
+
+  estimated <- estimated[rownames(fixture$true_props), colnames(fixture$true_props)]
+  max_abs_error <- max(abs(estimated - fixture$true_props))
+  expect_lt(max_abs_error, 0.15)
+})
+
 test_that("load_scrna_signature() calls zellkonverter::readH5AD() on the given path", {
   called_with <- NULL
   fake_sce <- SingleCellExperiment::SingleCellExperiment()
