@@ -69,3 +69,39 @@ compare_de_methods <- function(deseq2_res, edger_res) {
     discrepancy = discrepancy
   )
 }
+
+#' Extract the fold-change column from a DESeq2 or edgeR result
+#'
+#' [run_deseq2()] results have a `log2FoldChange` column; [run_edger()] results have
+#' `logFC` instead. Callers that need "the fold-change column, whichever DE method
+#' this came from" (e.g. building a ranked gene list for GSEA) should use this
+#' rather than hardcoding one column name — a real incident (see `ADR-0006`)
+#' silently produced `NULL` for the un-hardcoded method by doing exactly that.
+#' Errors explicitly if neither column is present, rather than returning `NULL` for
+#' some future third DE method with yet another naming convention.
+#'
+#' @param res A [run_deseq2()] or [run_edger()] result (or any data frame/DataFrame
+#'   with a `log2FoldChange` or `logFC` column).
+#'
+#' @return The fold-change column, as given (whatever numeric type/class `res`
+#'   itself uses for its columns).
+#'
+#' @examples
+#' data(example_bulk_se)
+#' deseq2_res <- run_deseq2(example_bulk_se, condition_column = "condition")
+#' edger_res <- run_edger(example_bulk_se, condition_column = "condition")
+#' extract_fold_change(deseq2_res)
+#' extract_fold_change(edger_res)
+#' @export
+extract_fold_change <- function(res) {
+  if (!is.null(res$log2FoldChange)) {
+    return(res$log2FoldChange)
+  }
+  if (!is.null(res$logFC)) {
+    return(res$logFC)
+  }
+  stop(
+    "`res` has neither a `log2FoldChange` (DESeq2) nor `logFC` (edgeR) column - ",
+    "cannot determine which fold-change column to use."
+  )
+}
