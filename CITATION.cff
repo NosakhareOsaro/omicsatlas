@@ -10,6 +10,7 @@ authors:
   - family-names: Osaro
     given-names: Nosakhare Odionfo
     email: osaronosakhare@gmail.com
+    orcid: "https://orcid.org/0009-0004-9778-1161"
 license: MIT
 repository-code: "https://github.com/NosakhareOsaro/omicsatlas"
 version: 0.1.0.dev0
