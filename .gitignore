@@ -51,6 +51,3 @@ paper/_output/
 .DS_Store
 .vscode/
 .idea/
-
-# Claude Code local session state (not part of project config)
-.claude/
